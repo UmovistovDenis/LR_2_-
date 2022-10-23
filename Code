@@ -1,0 +1,100 @@
+#include <iostream>
+#include <iomanip>
+#include <set>
+#include <queue>
+#include <climits>
+
+int row[] = { 2, 2, -2, -2, 1, 1, -1, -1 }; //Смещения для 
+int col[] = { -1, 1, 1, -1, 2, -2, 2, -2 }; //возможных ходов коня по доске
+
+bool isValid(int x, int y, int N) { //true, если (x, y) - валидные координаты
+    return (x >= 0 && x < N) && (y >= 0 && y < N);
+}
+
+struct Node { 
+    int x, y, dist; //координаты x,y поля, расстояния от цели
+    int x0, y0; //предыдущие координаты
+    Node(int x, int y, int dist = 0, int x0 = -1, int y0 = -1) :
+        x(x), y(y), dist(dist), x0(x0), y0(y0) {} //Конструктор узла
+    bool operator < (const Node& o) const {
+        //Компаратор, определяющий итоговое положение узлов во множестве посещённых полей
+        return dist < o.dist || dist == o.dist && (x < o.x || (x == o.x && y < o.y));
+    }
+    bool operator == (const Node& o) const { //Компаратор для будущего поиска полей
+        return x == o.x && y == o.y && dist == o.dist;
+    }
+};
+
+Node findShortestDistance(int N, Node src, Node dest, std::set <Node>& visited) {
+    //Вернуть минимальное количество ходов коня из src в dest, 
+    //варианты путей записать в visited
+    std::queue <Node> q; //Очередь посещённых полей
+    q.push(src); //Посетили исходное поле
+    while (!q.empty()) {
+        Node node = q.front(); //Взяли следующее из очереди
+        q.pop();
+        int x = node.x;
+        int y = node.y;
+        int dist = node.dist;
+        if (x == dest.x && y == dest.y) { //Если цель достигнута
+            visited.insert(node);
+            return node;
+        }
+        if (!visited.count(node)) { //Пропустить, если node посещалось
+            visited.insert(node); //Пометили node как посещённое
+            for (int i = 0; i < 8; i++) { //ставим в очередь валидные ходы коня
+                int x1 = x + row[i];
+                int y1 = y + col[i];
+                if (isValid(x1, y1, N)) q.push({ x1, y1, dist + 1, x, y });
+            }
+        }
+    }
+    Node err = { src.x, src.y, INT_MAX, dest.x, dest.y };
+    return err; //Путь не найден
+}
+
+int main() {
+    setlocale(LC_ALL, "Russian");
+    std :: cout << "введите размерность шахматной доски:";
+    int N;
+    std::cin >> N; //Доска N x N
+    int x1, y1;
+    std::cout << "введите координаты начального поля: \n";
+    std::cout << "координата y=";
+    std::cin >> x1; 
+    std::cout << "координата x=";
+    std::cin >> y1; 
+    Node src = { x1, y1 }; //Исходные координаты (с 0)
+
+    int x2, y2;
+    std::cout << "введите координаты конечного поля:\n";
+    std::cout << "координата y=";
+    std::cin >> x2;
+    std::cout << "координата x=";
+    std::cin >> y2;
+    Node dest = { x2, y2 }; //Целевые координаты
+
+    std::set <Node> visited; //Посещённые поля
+    Node result = findShortestDistance(N, src, dest, visited);
+    if (result.dist == INT_MAX) std::cout << "Путь не найден";
+    else {
+        std::cout << "Минимальное количество шагов = " << result.dist << std::endl;
+        std::cout << "Все шаги " << std::endl;
+        int** board = new int* [N];
+        for (int i = 0; i < N; i++) board[i] = new int[N] { 0 };
+        while (result.dist >= 0) {
+            std::set<Node>::iterator it = visited.find(result);
+            if (it != visited.end()) {
+                board[result.x][result.y] = result.dist + 1;
+                result.dist--; result.x = (*it).x0; result.y = (*it).y0;
+            }
+        }
+        for (int i = 0; i < N; i++) {
+            for (int j = 0; j < N; j++) {
+                std::cout << std::setw(2) << board[i][j];
+            }
+            std::cout << std::endl;
+        }
+    }
+    return 0;
+}
